@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  traffic-monitor:
+    build: .
+    container_name: traffic-monitor-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Mount the data directory to persist the SQLite database
+      # This ensures your data survives container restarts.
+      - ./data:/app/data

@@ -1,0 +1,4 @@
+requests
+schedule
+SQLAlchemy
+python-dotenv
