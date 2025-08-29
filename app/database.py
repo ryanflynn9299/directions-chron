@@ -49,7 +49,7 @@ def get_db_session():
     return Session()
 
 
-def add_traffic_entry(duration_seconds: int):
+def add_traffic_entry(duration_seconds: int, origin: str, destination: str):
     """Adds a new traffic data entry to the database."""
     session = get_db_session()
     try:
@@ -58,12 +58,12 @@ def add_traffic_entry(duration_seconds: int):
             timestamp=now,
             day_of_week=now.strftime('%A'),  # e.g., "Monday"
             duration_seconds=duration_seconds,
-            origin=config.START_POINT,
-            destination=config.END_POINT
+            origin=origin,
+            destination=destination
         )
         session.add(new_entry)
         session.commit()
-        logging.info(f"Successfully added new traffic entry: {duration_seconds} seconds.")
+        logging.info(f"Successfully added entry: {origin} -> {destination} ({duration_seconds}s).")
     except Exception as e:
         logging.error(f"Failed to add database entry: {e}")
         session.rollback()
