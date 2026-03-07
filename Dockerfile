@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code into the container
-COPY ./app ./app
+COPY ./src ./src
 
 # Command to run the application
-CMD ["python", "-u", "app/main.py"]
+CMD ["python", "-u", "src/main.py"]

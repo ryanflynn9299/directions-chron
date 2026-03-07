@@ -1,10 +1,8 @@
-# app/maps_api.py
 import logging
-from datetime import datetime
-
 import requests
 from typing import Optional
 
+logger = logging.getLogger(__name__)
 
 def get_route_duration_seconds(api_key: str, origin: str, destination: str) -> Optional[int]:
     """
@@ -45,12 +43,12 @@ def get_route_duration_seconds(api_key: str, origin: str, destination: str) -> O
             return int(duration_str.rstrip('s'))
         else:
             # The API can return a 200 OK with an empty response if no route is found
-            logging.warning(f"No routes found between {origin} and {destination}.")
+            logger.warning(f"No routes found between {origin} and {destination}.")
             return None
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"HTTP request to Google Routes API failed: {e}")
+        logger.error(f"HTTP request to Google Routes API failed: {e}")
         return None
     except (KeyError, IndexError, TypeError) as e:
-        logging.error(f"Failed to parse Google Routes API response: {e}")
+        logger.error(f"Failed to parse Google Routes API response: {e}")
         return None

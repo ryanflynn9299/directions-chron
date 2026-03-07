@@ -1,3 +1,35 @@
+# Environments
 .env
+
+# MacOS
+.DS_Store
+
+# IDEs
 /.idea/
 /.qodo/
+/.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Databases & Data
+*.db
+*.sqlite
+*.sqlite3
+data/*.json
+
+# Exclude all files in data except .gitkeep
+data/*
+!data/.gitkeep

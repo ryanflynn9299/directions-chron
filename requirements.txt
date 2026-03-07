@@ -2,3 +2,7 @@ requests
 schedule
 SQLAlchemy
 python-dotenv
+fastapi
+uvicorn
+pyyamlpytest
+pytest-asyncio

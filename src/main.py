@@ -1,0 +1,41 @@
+import logging
+import sys
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from src.api.routes import router as api_router
+from src.jobs.scheduler import scheduler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    stream=sys.stdout
+)
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the background scheduler task
+    logger.info("--- Starting Traffic Data Monitor Application ---")
+    await scheduler.start()
+    
+    yield
+    
+    # Shutdown: Stop the scheduler task cleanly
+    logger.info("--- Shutting down Traffic Data Monitor Application ---")
+    await scheduler.stop()
+
+# Initialize API server
+app = FastAPI(
+    title="Directions Chron API",
+    description="API for managing and querying traffic directions data",
+    lifespan=lifespan
+)
+
+app.include_router(api_router)
+
+if __name__ == "__main__":
+    import uvicorn
+    # When run directly, start the uvicorn server handling this FastAPI app locally
+    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=False)
