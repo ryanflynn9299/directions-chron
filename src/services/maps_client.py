@@ -1,6 +1,8 @@
 import logging
 import requests
+import random
 from typing import Optional
+from src.config.config import MOCK_API_CALLS
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,10 @@ def get_route_duration_seconds(api_key: str, origin: str, destination: str) -> O
     Returns:
         The travel time in seconds, or None if the request fails.
     """
+    if MOCK_API_CALLS:
+        logger.info(f"[MOCK] Returning fabricated duration for route {origin} -> {destination}")
+        return random.randint(1200, 3600)  # Random duration between 20-60 minutes
+
     url = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
     headers = {

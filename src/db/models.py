@@ -25,3 +25,15 @@ class TrafficData(Base):
             f"<TrafficData(id={self.id}, timestamp='{self.timestamp}', "
             f"duration_seconds={self.duration_seconds})>"
         )
+
+class SavedRoute(Base):
+    """Stores user-defined alias mappings to route configurations."""
+    __tablename__ = 'saved_routes'
+
+    # The alias is the unique identifier (e.g., 'commute', 'new_house')
+    alias = Column(String, primary_key=True, index=True)
+    source = Column(String, nullable=False)
+    # Store destinations as a JSON string for SQLite simplicity
+    destinations_json = Column(String, nullable=False) 
+    bidirectional = Column(Integer, default=1) # Boolean equivalent for SQLite
+

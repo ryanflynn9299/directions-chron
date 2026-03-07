@@ -71,6 +71,22 @@ def migrate():
         except sqlite3.OperationalError:
             print("Indices already exist.")
 
+        # 3. Create Saved Routes table (Phase 7)
+        print("Ensuring saved_routes table exists...")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS saved_routes (
+                alias VARCHAR PRIMARY KEY,
+                source VARCHAR NOT NULL,
+                destinations_json VARCHAR NOT NULL,
+                bidirectional INTEGER DEFAULT 1
+            )
+        ''')
+        try:
+            cursor.execute("CREATE INDEX ix_saved_routes_alias ON saved_routes (alias)")
+        except sqlite3.OperationalError:
+            pass
+
+
         conn.commit()
         print("Database migration completed successfully.")
 

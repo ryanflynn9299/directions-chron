@@ -4,6 +4,7 @@ from requests.exceptions import RequestException
 
 from src.services.maps_client import get_route_duration_seconds
 
+@patch("src.services.maps_client.MOCK_API_CALLS", False)
 @patch("src.services.maps_client.requests.post")
 def test_get_route_duration_success(mock_post):
     mock_response = MagicMock()
@@ -20,6 +21,7 @@ def test_get_route_duration_success(mock_post):
     assert duration == 1450
     mock_post.assert_called_once()
 
+@patch("src.services.maps_client.MOCK_API_CALLS", False)
 @patch("src.services.maps_client.requests.post")
 def test_get_route_duration_no_routes_found(mock_post):
     mock_response = MagicMock()
@@ -32,6 +34,7 @@ def test_get_route_duration_no_routes_found(mock_post):
 
     assert duration is None
 
+@patch("src.services.maps_client.MOCK_API_CALLS", False)
 @patch("src.services.maps_client.requests.post")
 def test_get_route_duration_request_exception(mock_post):
     # Mock a network failure or 401 Unauthorized
@@ -41,6 +44,7 @@ def test_get_route_duration_request_exception(mock_post):
 
     assert duration is None
 
+@patch("src.services.maps_client.MOCK_API_CALLS", False)
 @patch("src.services.maps_client.requests.post")
 def test_get_route_duration_parse_error(mock_post):
     mock_response = MagicMock()
@@ -53,3 +57,12 @@ def test_get_route_duration_parse_error(mock_post):
     
     # It attempts to get('duration', '0s'), stripping 's' returns 0 instead of crashing
     assert duration == 0
+
+@patch("src.services.maps_client.MOCK_API_CALLS", True)
+@patch("src.services.maps_client.requests.post")
+def test_get_route_duration_mocked(mock_post):
+    # This should not call post at all
+    duration = get_route_duration_seconds("fake_key", "Origin A", "Dest B")
+
+    assert 1200 <= duration <= 3600
+    mock_post.assert_not_called()

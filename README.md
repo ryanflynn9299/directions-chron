@@ -82,6 +82,7 @@ Executes routing queries immediately against Google Maps, persists the data, and
   ]
 }
 ```
+*Note: The array expands multiplicatively. For example, 1 source mapping to 2 destinations with bidirectional set to `true` will execute 4 discrete route fetches and return 4 result objects. Additionally, providing an `alias` label alongside an explicitly defined route will idempotently save or update that configuration in your database for future shorthand use! The API will append a creation receipt object to your response to confirm it was saved.*
 
 ### 2. Schedule Background Jobs
 **`POST /routes/schedule`**

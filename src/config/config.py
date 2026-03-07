@@ -15,7 +15,14 @@ except FileNotFoundError:
     yaml_config = {}
 
 # --- API Configuration (Sensitive / Environment Specific) ---
+_api_cfg = yaml_config.get('api', {})
 API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+
+_mock_env = os.getenv("MOCK_API_CALLS")
+if _mock_env is not None:
+    MOCK_API_CALLS = _mock_env.lower() in ('true', '1', 't')
+else:
+    MOCK_API_CALLS = _api_cfg.get('mock_api_calls', False)
 
 # --- Default Route Configuration ---
 # Values from .env override yaml defaults which override hardcoded defaults

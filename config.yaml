@@ -13,3 +13,8 @@ schedule:
   off_peak_interval_minutes: 30
   off_peak_start_time: "21:00"
   off_peak_end_time: "04:00"
+
+# API Behavior
+api:
+  mock_api_calls: true
+

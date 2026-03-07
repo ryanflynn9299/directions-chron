@@ -7,6 +7,7 @@ from src.db.database import get_db_session
 from src.db.models import TrafficData
 from src.config.config import API_KEY
 from src.api.schemas import RouteRequest
+from src.services.alias_resolver import resolve_aliases
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +107,17 @@ class RouteService:
             A flattened list of all executed result dictionaries.
         """
         all_results = []
+        
+        # 1. Expand aliases to full routes or fetch their explicit configurations
+        resolved_routes = resolve_aliases(routes)
 
-        for route in routes:
+        # 2. Process resolving errors or explicit configurations
+        for route in resolved_routes:
+            if isinstance(route, dict):
+                # It's an error dict from alias resolution failure
+                all_results.append(route)
+                continue
+                
             dests = route.destinations if route.destinations else [route.destination]
             for dest in dests:
                 if dest:

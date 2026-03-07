@@ -2,22 +2,38 @@ from pydantic import BaseModel, Field, root_validator, validator
 from typing import Optional, List, Dict, Any
 
 class RouteRequest(BaseModel):
-    source: str
+    alias: Optional[str] = None
+    source: Optional[str] = None
     destination: Optional[str] = None
     destinations: Optional[List[str]] = Field(default=None, max_items=100)
     bidirectional: bool = True
-    alias: Optional[str] = None
 
     @root_validator(pre=True)
     def check_mutually_exclusive_destinations(cls, values):
+        alias = values.get('alias')
+        has_source = bool(values.get('source'))
         has_dest = bool(values.get('destination'))
         has_dests = bool(values.get('destinations'))
 
+        if alias and not has_source and not has_dest and not has_dests:
+            # It's an alias-only resolution request
+            return values
+
+        if not has_source:
+             raise ValueError("'source' is required unless submitting an alias-only resolution request.")
+             
         if has_dest and has_dests:
             raise ValueError("Fields 'destination' and 'destinations' are mutually exclusive.")
         if not has_dest and not has_dests:
             raise ValueError("Either 'destination' or 'destinations' must be provided.")
+            
         return values
+
+class SavedRouteResponse(BaseModel):
+    alias: str
+    source: str
+    destinations: List[str]
+    bidirectional: bool
 
 class QueryPayload(BaseModel):
     routes: List[RouteRequest]
