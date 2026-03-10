@@ -118,6 +118,16 @@ def migrate():
         ''')
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_saved_routes_alias ON saved_routes (alias)")
 
+        # 5. Create Destination Batches table
+        logger.info("Ensuring destination_batches table exists...")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS destination_batches (
+                alias VARCHAR PRIMARY KEY,
+                destinations_json VARCHAR NOT NULL
+            )
+        ''')
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_destination_batches_alias ON destination_batches (alias)")
+
         conn.commit()
         logger.info("Database migration completed successfully.")
 
