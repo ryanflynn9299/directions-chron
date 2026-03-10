@@ -1,9 +1,25 @@
 import sqlite3
 import os
+import logging
+import sys
 
-# Locate the database relative to the script location
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
+# Locate the database relative to the script location or environment variable
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(SCRIPT_DIR, '..', 'data', 'traffic_data.db')
+DB_PATH = os.environ.get("DB_PATH", os.path.join(SCRIPT_DIR, '..', 'data', 'traffic_data.db'))
+
+def column_exists(cursor, table_name, column_name):
+    """Check if a column exists in a specific table."""
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = [col[1] for col in cursor.fetchall()]
+    return column_name in columns
 
 def migrate():
     """
@@ -11,68 +27,87 @@ def migrate():
     (route_group_id, job_id, alias) and retroactively computes route_group_id 
     for all existing rows to preserve historical queryability.
     """
-    if not os.path.exists(DB_PATH):
-        print(f"Database not found at {DB_PATH}. Exiting.")
+    db_abs_path = os.path.abspath(DB_PATH)
+    if not os.path.exists(db_abs_path):
+        logger.error(f"Database not found at {db_abs_path}. Exiting.")
         return
 
-    print(f"Connecting to database at {DB_PATH}...")
-    conn = sqlite3.connect(DB_PATH)
+    logger.info(f"Connecting to database at {db_abs_path}...")
+    
+    # Check file and directory permissions
+    if not os.access(db_abs_path, os.W_OK):
+        logger.error(f"Write permission denied for database file at {db_abs_path}. Please check file permissions.")
+        return
+        
+    db_dir = os.path.dirname(db_abs_path)
+    if not os.access(db_dir, os.W_OK):
+        logger.warning(f"Write permission denied for database directory {db_dir}. SQLite may fail to create a journal/WAL file if needed.")
+
+    conn = sqlite3.connect(db_abs_path)
     cursor = conn.cursor()
 
     try:
-        # 1. Add Columns (SQLite requires doing this one by one)
-        print("Adding new columns...")
-        
-        # We use a TRY-CATCH block per column just in case the script is run twice
-        try:
-            cursor.execute("ALTER TABLE traffic_data ADD COLUMN route_group_id VARCHAR")
-            print(" - Added route_group_id")
-        except sqlite3.OperationalError:
-            print(" - route_group_id already exists")
-            
-        try:
-            cursor.execute("ALTER TABLE traffic_data ADD COLUMN job_id VARCHAR")
-            print(" - Added job_id")
-        except sqlite3.OperationalError:
-            print(" - job_id already exists")
+        # Check if table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='traffic_data'")
+        if not cursor.fetchone():
+            logger.error("Table 'traffic_data' does not exist in the database. Cannot migrate.")
+            return
 
-        try:
-            cursor.execute("ALTER TABLE traffic_data ADD COLUMN alias VARCHAR")
-            print(" - Added alias")
-        except sqlite3.OperationalError:
-            print(" - alias already exists")
+        # 1. Add Columns
+        logger.info("Checking and adding missing columns...")
+        
+        columns_to_add = {
+            "route_group_id": "VARCHAR",
+            "job_id": "VARCHAR",
+            "alias": "VARCHAR"
+        }
+
+        for col_name, col_type in columns_to_add.items():
+            if not column_exists(cursor, "traffic_data", col_name):
+                logger.info(f"Attempting to add column '{col_name}' of type {col_type}...")
+                cursor.execute(f"ALTER TABLE traffic_data ADD COLUMN {col_name} {col_type}")
+                logger.info(f"Successfully added column '{col_name}'.")
+            else:
+                logger.info(f"Column '{col_name}' already exists. Skipping.")
+
+        # Commit column additions before attempting updates
+        conn.commit()
 
         # 2. Compute and retroactive-fill route_group_id
-        print("Updating historical rows with computed route_group_id...")
+        logger.info("Updating historical rows with computed route_group_id...")
         
+        # Verify the column was actually added before trying to update it
+        if not column_exists(cursor, "traffic_data", "route_group_id"):
+            raise RuntimeError("route_group_id column was not found even after attempted addition.")
+
         # Fetch all existing rows
-        cursor.execute("SELECT id, origin, destination FROM traffic_data")
+        cursor.execute("SELECT id, origin, destination, route_group_id FROM traffic_data")
         rows = cursor.fetchall()
         
         update_count = 0
-        for row_id, origin, destination in rows:
+        for row_id, origin, destination, current_route_group_id in rows:
             # Replicate the Python logic: "|".join(sorted([origin, destination]))
-            route_group_id = "|".join(sorted([origin, destination]))
+            expected_route_group_id = "|".join(sorted([origin, destination]))
             
-            cursor.execute(
-                "UPDATE traffic_data SET route_group_id = ? WHERE id = ?",
-                (route_group_id, row_id)
-            )
-            update_count += 1
+            # Only update if null or different
+            if current_route_group_id != expected_route_group_id:
+                cursor.execute(
+                    "UPDATE traffic_data SET route_group_id = ? WHERE id = ?",
+                    (expected_route_group_id, row_id)
+                )
+                update_count += 1
             
-        print(f"Successfully migrated {update_count} existing rows.")
+        logger.info(f"Successfully migrated {update_count} existing rows to have the correct route_group_id.")
         
-        # Optionally add indices as defined by SQLAlchemy models to speed up lookup
-        try:
-            cursor.execute("CREATE INDEX ix_traffic_data_route_group_id ON traffic_data (route_group_id)")
-            cursor.execute("CREATE INDEX ix_traffic_data_job_id ON traffic_data (job_id)")
-            cursor.execute("CREATE INDEX ix_traffic_data_alias ON traffic_data (alias)")
-            print("Created indices for new columns.")
-        except sqlite3.OperationalError:
-            print("Indices already exist.")
+        # 3. Handle Indices
+        logger.info("Creating indices if they do not exist...")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_traffic_data_route_group_id ON traffic_data (route_group_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_traffic_data_job_id ON traffic_data (job_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_traffic_data_alias ON traffic_data (alias)")
+        logger.info("Indices verified/created.")
 
-        # 3. Create Saved Routes table (Phase 7)
-        print("Ensuring saved_routes table exists...")
+        # 4. Create Saved Routes table (Phase 7)
+        logger.info("Ensuring saved_routes table exists...")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS saved_routes (
                 alias VARCHAR PRIMARY KEY,
@@ -81,18 +116,19 @@ def migrate():
                 bidirectional INTEGER DEFAULT 1
             )
         ''')
-        try:
-            cursor.execute("CREATE INDEX ix_saved_routes_alias ON saved_routes (alias)")
-        except sqlite3.OperationalError:
-            pass
-
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_saved_routes_alias ON saved_routes (alias)")
 
         conn.commit()
-        print("Database migration completed successfully.")
+        logger.info("Database migration completed successfully.")
 
-    except Exception as e:
-        print(f"Migration failed: {e}")
+    except sqlite3.OperationalError as e:
+        logger.error(f"SQLite Operational Error during migration: {e}")
         conn.rollback()
+        raise
+    except Exception as e:
+        logger.error(f"Migration failed with an unexpected error: {e}", exc_info=True)
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
