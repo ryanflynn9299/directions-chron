@@ -3,7 +3,7 @@ from typing import List, Union
 
 from src.api.schemas import RouteRequest
 from src.db.database import get_db_session
-from src.db.models import SavedRoute
+from src.db.models import SavedRoute, DestinationBatch
 
 def resolve_aliases(routes: List[RouteRequest]) -> List[Union[RouteRequest, dict]]:
     """
@@ -15,6 +15,20 @@ def resolve_aliases(routes: List[RouteRequest]) -> List[Union[RouteRequest, dict
     
     with get_db_session() as session:
         for r in routes:
+            # First, resolve destination batches
+            if getattr(r, 'destination_batch_alias', None):
+                batch = session.query(DestinationBatch).filter(DestinationBatch.alias == r.destination_batch_alias).first()
+                if batch:
+                    r.destinations = json.loads(batch.destinations_json)
+                    r.destination_batch_alias = None
+                else:
+                    resolved_routes.append({
+                        "alias": getattr(r, 'alias', r.destination_batch_alias),
+                        "status": "error",
+                        "error_message": f"Destination batch '{r.destination_batch_alias}' not found"
+                    })
+                    continue
+
             has_source = bool(r.source)
             has_dest = bool(r.destination)
             has_dests = bool(r.destinations)

@@ -6,6 +6,7 @@ class RouteRequest(BaseModel):
     source: Optional[str] = None
     destination: Optional[str] = None
     destinations: Optional[List[str]] = Field(default=None, max_items=100)
+    destination_batch_alias: Optional[str] = None
     bidirectional: bool = True
 
     @root_validator(pre=True)
@@ -14,20 +15,30 @@ class RouteRequest(BaseModel):
         has_source = bool(values.get('source'))
         has_dest = bool(values.get('destination'))
         has_dests = bool(values.get('destinations'))
+        has_batch = bool(values.get('destination_batch_alias'))
 
-        if alias and not has_source and not has_dest and not has_dests:
+        if alias and not has_source and not has_dest and not has_dests and not has_batch:
             # It's an alias-only resolution request
             return values
 
         if not has_source:
              raise ValueError("'source' is required unless submitting an alias-only resolution request.")
              
-        if has_dest and has_dests:
-            raise ValueError("Fields 'destination' and 'destinations' are mutually exclusive.")
-        if not has_dest and not has_dests:
-            raise ValueError("Either 'destination' or 'destinations' must be provided.")
+        dest_fields = sum([has_dest, has_dests, has_batch])
+        if dest_fields > 1:
+            raise ValueError("Fields 'destination', 'destinations', and 'destination_batch_alias' are mutually exclusive.")
+        if dest_fields == 0:
+            raise ValueError("One of 'destination', 'destinations', or 'destination_batch_alias' must be provided.")
             
         return values
+
+class DestinationBatchCreate(BaseModel):
+    alias: str
+    destinations: List[str] = Field(..., min_items=1, max_items=100)
+
+class DestinationBatchResponse(BaseModel):
+    alias: str
+    destinations: List[str]
 
 class SavedRouteResponse(BaseModel):
     alias: str

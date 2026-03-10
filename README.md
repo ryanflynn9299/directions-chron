@@ -65,7 +65,20 @@ The application will boot, bind to port `8000`, and initialize the SQLite databa
 
 The Commute Logger operates entirely via its REST API (default `http://localhost:8000`).
 
-### 1. Execute Immediate Query
+### 1. Manage Destination Batches
+**`POST /destinations/batch`**
+Instead of repeating large arrays of commute destinations, you can save a reusable set of destinations as a "batch alias".
+
+**Example Payload:**
+```json
+{
+  "alias": "routine",
+  "destinations": ["Work", "Gym", "Groceries"]
+}
+```
+*You can also fetch all saved destination batches via `GET /destinations/batch`, retrieve a specific batch via `GET /destinations/batch/{alias}`, or clear one using `DELETE /destinations/batch/{alias}`.*
+
+### 2. Execute Immediate Query
 **`POST /routes/query`**
 Executes routing queries immediately against Google Maps, persists the data, and returns the results. It supports bulk arrays and automatic reverse-trip gathering.
 
@@ -78,13 +91,17 @@ Executes routing queries immediately against Google Maps, persists the data, and
       "destinations": ["456 Market St, Boston", "789 Broad St, Boston"],
       "bidirectional": true,
       "alias": "morning_evals"
+    },
+    {
+      "source": "Home",
+      "destination_batch_alias": "routine"
     }
   ]
 }
 ```
-*Note: The array expands multiplicatively. For example, 1 source mapping to 2 destinations with bidirectional set to `true` will execute 4 discrete route fetches and return 4 result objects. Additionally, providing an `alias` label alongside an explicitly defined route will idempotently save or update that configuration in your database for future shorthand use! The API will append a creation receipt object to your response to confirm it was saved.*
+*Note: The array expands multiplicatively. For example, 1 source mapping to 2 destinations with bidirectional set to `true` will execute 4 discrete route fetches and return 4 result objects. Alternatively, passing `destination_batch_alias` auto-expands into all destinations registered under that batch alias. Additionally, providing an `alias` label alongside an explicitly defined route will idempotently save or update that configuration in your database for future shorthand use! The API will append a creation receipt object to your response to confirm it was saved.*
 
-### 2. Schedule Background Jobs
+### 3. Schedule Background Jobs
 **`POST /routes/schedule`**
 Kicks off background jobs for the requested routes based on a customized schedule. Limits cap active jobs at 10.
 
@@ -108,7 +125,7 @@ Kicks off background jobs for the requested routes based on a customized schedul
 }
 ```
 
-### 3. Retrieve Active Schedules
+### 4. Retrieve Active Schedules
 **`GET /routes/schedule`**
 Returns metadata about all active tracking jobs currently spinning in the event loop.
 

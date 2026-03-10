@@ -37,3 +37,12 @@ class SavedRoute(Base):
     destinations_json = Column(String, nullable=False) 
     bidirectional = Column(Integer, default=1) # Boolean equivalent for SQLite
 
+class DestinationBatch(Base):
+    """Stores user-defined sets of destinations for easy batch queries."""
+    __tablename__ = 'destination_batches'
+
+    # The alias is the unique identifier (e.g., 'routine')
+    alias = Column(String, primary_key=True, index=True)
+    # Store destinations as a JSON string for SQLite simplicity
+    destinations_json = Column(String, nullable=False)
+
