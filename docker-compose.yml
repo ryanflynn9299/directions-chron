@@ -8,8 +8,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "8000:8000"
+  # ports:
+  #    - "8000:8000
+    environment:
+      - TZ=America/New_York
     volumes:
       # Mount the data directory to persist the SQLite database
       # This ensures your data survives container restarts.
