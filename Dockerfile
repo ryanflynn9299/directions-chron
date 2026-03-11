@@ -21,4 +21,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY ./src ./src
 
 # Command to run the application
-CMD ["python", "-u", "src/main.py"]
+CMD ["python", "-u", "-m", "src.main"]

@@ -4,5 +4,6 @@ SQLAlchemy
 python-dotenv
 fastapi
 uvicorn
-pyyamlpytest
+pyyaml
+pytest
 pytest-asyncio
